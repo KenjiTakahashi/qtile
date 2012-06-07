@@ -1,7 +1,7 @@
 import cairo
 import os
 
-from libqtile import bar, hook, manager
+from libqtile import bar, manager
 import base
 
 BAT_DIR = '/sys/class/power_supply'
@@ -9,6 +9,7 @@ CHARGED = 'Full'
 CHARGING = 'Charging'
 DISCHARGING = 'Discharging'
 UNKNOWN = 'Unknown'
+
 
 def default_icon_path():
     # default icons are in libqtile/resources/battery-icons
@@ -86,15 +87,17 @@ class Battery(_Battery):
         if info == False:
             return 'Error'
 
-        ## Set the charging character
-        if info['stat'] == DISCHARGING:
-            char = self.discharge_char
-            time = info['now'] / info['power']
-        elif info['stat'] == CHARGING:
-            char = self.charge_char
-            time = (info['full'] - info['now']) / info['power']
-        else:
-            return 'Full'
+        try:
+            if info['stat'] == DISCHARGING:
+                char = self.discharge_char
+                time = info['now'] / info['power']
+            elif info['stat'] == CHARGING:
+                char = self.charge_char
+                time = (info['full'] - info['now']) / info['power']
+            else:
+                return 'Full'
+        except ZeroDivisionError:
+            return 'Inf'
 
         ## Calculate the battery percentage and time left
         hour = int(time)

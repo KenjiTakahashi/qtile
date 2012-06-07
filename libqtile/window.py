@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
 import struct
 import contextlib
 import xcb.xcb
@@ -138,7 +137,8 @@ class _Window(command.CommandObject):
         def get_attr(self):
             if getattr(self, "_" + attr) is None:
                 g = self.window.get_geometry()
-                self._x, self._y, self._width, self._height = g.x, g.y, g.width, g.height
+                self._x, self._y = g.x, g.y
+                self._width, self._height = g.width, g.height
                 # note that _float_info x and y are
                 # really offsets, relative to screen x,y
                 self._float_info = {
@@ -154,9 +154,15 @@ class _Window(command.CommandObject):
 
     x = property(fset=_geometry_setter("x"), fget=_geometry_getter("x"))
     y = property(fset=_geometry_setter("y"), fget=_geometry_getter("y"))
-    width = property(fset=_geometry_setter("width"), fget=_geometry_getter("width"))
-    height = property(fset=_geometry_setter("height"), fget=_geometry_getter("height"))
-    _float_info = property(fset=_geometry_setter("_float_info"), fget=_geometry_getter("_float_info"))
+    width = property(
+        fset=_geometry_setter("width"),
+        fget=_geometry_getter("width"))
+    height = property(
+        fset=_geometry_setter("height"),
+        fget=_geometry_getter("height"))
+    _float_info = property(
+        fset=_geometry_setter("_float_info"),
+        fget=_geometry_getter("_float_info"))
 
     def updateName(self):
         try:
