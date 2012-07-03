@@ -237,16 +237,36 @@ def test_resize(self):
     assert off(l) == [0, 10, 90]
 
 
-class ErrConf(GeomConf):
+class TopBottomConf(GeomConf):
     screens = [
         libqtile.manager.Screen(left=libqtile.bar.Bar([], 10))
+    ]
+
+class MultiStretchConf(GeomConf):
+    screens = [
+        libqtile.manager.Screen(top=libqtile.bar.Bar([
+          libqtile.widget.TextBox(txt, width=libqtile.bar.STRETCH)
+          for txt in ["text1", "text2"]
+        ], 10))
+    ]
+
+class ErrConf:
+    main = None
+    keys = []
+    mouse = []
+    groups = [libqtile.manager.Group("a")]
+    layouts = [libqtile.layout.stack.Stack(stacks=1)]
+    floating_layout = libqtile.layout.floating.Floating()
+    screens = [
+        libqtile.manager.Screen(
+            left=libqtile.bar.Bar([], 10),
+        )
     ]
 
 
 @Xephyr(True, ErrConf(), False)
 def test_err(self):
-    config = ErrConf()
-    self.qtileRaises(libqtile.confreader.ConfigError, config)
+    self.qtileRaises(libqtile.confreader.ConfigError, ErrConf())
 
 
 class TestWidget(libqtile.widget.base._Widget):
