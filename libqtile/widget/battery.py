@@ -1,6 +1,5 @@
 import cairo
 import os
-
 from libqtile import bar, manager
 import base
 
@@ -10,6 +9,12 @@ CHARGING = 'Charging'
 DISCHARGING = 'Discharging'
 UNKNOWN = 'Unknown'
 
+BATTERY_INFO_FILES = {
+    'energy_now_file': ['energy_now', 'charge_now'],
+    'energy_full_file':['energy_full', 'charge_full'],
+    'power_now_file': ['power_now', 'current_now'],
+    'status_file': ['status',],
+    }
 
 def default_icon_path():
     # default icons are in libqtile/resources/battery-icons
@@ -18,6 +23,10 @@ def default_icon_path():
 
 
 class _Battery(base._TextBox):
+    ''' Base battery class '''
+
+    filenames = {}
+
     defaults = manager.Defaults(
         ('font', 'Arial', 'Text font'),
         ('fontsize', None, 'Font pixel size. Calculated if None.'),
@@ -27,33 +36,54 @@ class _Battery(base._TextBox):
         ('battery_name', 'BAT0', 'ACPI name of a battery, usually BAT0'),
         ('status_file', 'status', 'Name of status file in'
          ' /sys/class/power_supply/battery_name'),
-        ('energy_now_file', 'energy_now', 'Name of file with the '
+        ('energy_now_file', None, 'Name of file with the '
          'current energy in /sys/class/power_supply/battery_name'),
-        ('energy_full_file', 'energy_full', 'Name of file with the maximum'
+        ('energy_full_file', None, 'Name of file with the maximum'
          ' energy in /sys/class/power_supply/battery_name'),
-        ('power_now_file', 'power_now', 'Name of file with the current'
+        ('power_now_file', None, 'Name of file with the current'
          ' power draw in /sys/class/power_supply/battery_name'),
         ('update_delay', 1, 'The delay in seconds between updates'),
     )
 
-    def _get_param(self, name):
+    def _load_file(self, name):
         try:
-            with open(
-                os.path.join(BAT_DIR, self.battery_name, name), 'r') as f:
+            path = os.path.join(BAT_DIR, self.battery_name, name)
+            with open(path, 'r') as f:
                 return f.read().strip()
         except IOError:
             if name == 'current_now':
                 return 0
+            return False
         except Exception:
             self.log.exception("Failed to get %s" % name)
+
+    def _get_param(self, name):
+        if name in self.filenames:
+            return self._load_file(self.filenames[name])
+        else:
+            ## Don't have the file name cached, figure it out
+            file_list = BATTERY_INFO_FILES.get(name, [])
+            if getattr(self, name, None):
+                ## If a file is manually specified, check it first
+                file_list.insert(0, getattr(self, name))
+
+            ## Iterate over the possibilities, and return the first valid value
+            for file in file_list:
+                value = self._load_file(file)
+                if not (value in (False, None)):
+                    self.filenames[name] = file
+                    return value
+
+        ## If we made it this far, we don't have a valid file. Just return 0.
+        return 0
 
     def _get_info(self):
         try:
             info = {
-                'stat': self._get_param(self.status_file),
-                'now': float(self._get_param(self.energy_now_file)),
-                'full': float(self._get_param(self.energy_full_file)),
-                'power': float(self._get_param(self.power_now_file)),
+                'stat': self._get_param('status_file'),
+                'now': float(self._get_param('energy_now_file')),
+                'full': float(self._get_param('energy_full_file')),
+                'power': float(self._get_param('power_now_file')),
                 }
         except TypeError:
             return False
@@ -87,6 +117,7 @@ class Battery(_Battery):
         if info == False:
             return 'Error'
 
+        ## Set the charging character
         try:
             if info['stat'] == DISCHARGING:
                 char = self.discharge_char
@@ -185,19 +216,23 @@ class BatteryIcon(_Battery):
         return True
 
     def draw(self):
-        self.drawer.clear(self.bar.background)
-        self.drawer.ctx.set_source(self.surfaces[self.current_icon])
-        self.drawer.ctx.paint()
-        self.drawer.draw(self.offset, self.width)
+        if self.theme_path:
+            self.drawer.clear(self.bar.background)
+            self.drawer.ctx.set_source(self.surfaces[self.current_icon])
+            self.drawer.ctx.paint()
+            self.drawer.draw(self.offset, self.width)
+        else:
+            self.text = self.current_icon[8:]
+            base._TextBox.draw(self)
 
     def setup_images(self):
         for key, name in self.icons.iteritems():
             try:
-                img = cairo.ImageSurface.create_from_png(
-                    os.path.join(self.theme_path, name))
+                path = os.path.join(self.theme_path, name)
+                img = cairo.ImageSurface.create_from_png(path)
             except cairo.Error:
                 self.theme_path = None
-                self.qtile.log.exception('Volume switching to text mode')
+                self.qtile.log.add('Battery Icon switching to text mode')
                 return
             input_width = img.get_width()
             input_height = img.get_height()
