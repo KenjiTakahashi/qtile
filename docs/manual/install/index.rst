@@ -8,8 +8,10 @@ Below are the preferred installation methods for specific distros. If you are
 running something else, please see `Installing From Source`_.
 
 * :doc:`/manual/install/arch`
+* :doc:`/manual/install/funtoo`
 * :doc:`/manual/install/gentoo`
 * :doc:`/manual/install/ubuntu`
+* :doc:`/manual/install/debian`
 
 Installing From Source
 ----------------------
